@@ -106,7 +106,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           push: false
-          tags: user/solar-system:${{ github.sha }}
+          tags: ${{ vars.DOCKER_USERNAME }}/solar-system:${{ github.sha }}
 
       - name: docker image
         run: |
@@ -115,7 +115,7 @@ jobs:
            -e MONGO_URI=$MONGO_URI \
            -e MONGO_USERNAME=$MONGO_USERNAME \
            -e MONGO_PASSWORD=$MONGO_PASSWORD \
-          user/solar-system:${{ github.sha }}
+          ${{ vars.DOCKER_USERNAME }}/solar-system:${{ github.sha }}
           
           export IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' solar-system-test)
           echo $IP
@@ -128,7 +128,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           push: true
-          tags: user/solar-system:latest
+          tags: ${{ vars.DOCKER_USERNAME }}/solar-system:latest
 
 
 
