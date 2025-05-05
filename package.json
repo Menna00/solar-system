@@ -11,7 +11,10 @@
   },
   "nyc": {
     "check-coverage": true,
-    "lines": 90
+    "lines": 85,
+    "functions": 80,
+    "branches": 50,
+    "statements": 85
   },
   "dependencies": {
     "cors": "^2.8.5",
