@@ -3,10 +3,10 @@ name: solar system
 on:
   push:
     branches: [feature/test]
-  workflow_dispatch:
-    branches: [feature/test]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
 
 env:
   MONGO_URI: "mongodb+srv://supercluster.d83jj.mongodb.net/superData"
