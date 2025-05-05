@@ -19,7 +19,7 @@ jobs:
   first_job:
     strategy:
       matrix:
-        nodejs-version: 18
+        nodejs-version: [18]
     #    nodejs-version: [18, 19, 20]
 
     #   exclude:
