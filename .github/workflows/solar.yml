@@ -106,7 +106,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           push: false
-          tags: ${{ secrets.DOCKER_USERNAME }}/solar-system:${{ github.sha }}
+          tags: menna/solar-system:${{ github.sha }}
 
       - name: docker image
         run: |
@@ -128,7 +128,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/solar-system:latest
+          tags: menna/solar-system:latest
 
 
 
