@@ -3,8 +3,8 @@ name: solar system
 on:
   push:
     branches: [feature/test]
-  workflow_dispatch:
-    branches: [feature/test]
+#  workflow_dispatch:
+#    branches: [feature/test]
   pull_request:
     branches: [main]
 
