@@ -1,0 +1,221 @@
+name: solar system
+
+on:
+  push:
+    branches: [feature/test]
+#  workflow_dispatch:
+#    branches: [feature/test]
+  pull_request:
+    branches: [main]
+
+env:
+  MONGO_URI: "mongodb+srv://supercluster.d83jj.mongodb.net/superData"
+  MONGO_USERNAME: ${{ secrets.MONGO_USERNAME }}
+  MONGO_PASSWORD: ${{ secrets.MONGO_PASSWORD }}
+
+jobs:
+  first_job:
+    strategy:
+      matrix:
+        nodejs-version: 18
+    #    nodejs-version: [18, 19, 20]
+
+    #   exclude:
+    #     - os: macos-latest
+    #       nodejs-version: 18
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Setup Node.js ${{ matrix.nodejs-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.nodejs-version }}
+  
+  
+  unit-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Set up Node.js ${{ matrix.nodejs-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.nodejs-version }}
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results.xml
+
+    
+  code-covering:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ matrix.nodejs-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.nodejs-version }}
+
+      - name: Install dependencies
+        run: npm install   
+
+      - name: run code coverage
+        continue-on-erorr: true
+        run:  npm run coverage
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage
+
+  
+  docker:
+    needs: [unit-test, code-covering]
+
+    permissions:
+      packages: write
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+ 
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          push: false
+          tags: ${{ secrets.DOCKER_USERNAME }}/solar-system:${{ github.sha }}
+
+      - name: docker image
+        run: |
+         docker run --name solar-system-test -d \
+           -p 3000:3000 \
+           -e MONGO_URI=$MONGO_URI \
+           -e MONGO_USERNAME=$MONGO_USERNAME \
+           -e MONGO_PASSWORD=$MONGO_PASSWORD \
+          ${{ secrets.DOCKER_USERNAME }}/solar-system:${{ github.sha }}
+          
+          export IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' solar-system-test)
+          echo $IP
+          
+          echo "testing image"
+          wget -q -O - 127.0.0.1:3000/live | grep live
+
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/solar-system:latest
+
+
+
+
+
+
+  build:
+
+    needs: [docker]
+
+    runs-on: ubuntu-latest
+
+    env:
+      MONGO_DB_CREDS: ${{ secrets.MONGO_DB_CREDS }}
+      MONGO_USERNAME: ${{ secrets.MONGO_USERNAME }}
+      MONGO_PASSWORD: ${{ secrets.MONGO_PASSWORD }}
+      GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+
+    steps:
+
+      - name: Run Unit Tests
+        run: |
+          echo "Creds: $MONGO_DB_CREDS"
+          echo "Username: $MONGO_USERNAME"
+          echo "Password: $MONGO_PASSWORD"
+          npm test
+
+      - name: Run Code Coverage
+        continue-on-error: true
+        run: npm run coverage
+
+      - name: Build Docker image
+        run: |
+          echo "Building image"
+          docker build -t siddharth67/solar-system:${{ github.sha }} .
+
+      - name: Scan image with Trivy
+        run: |
+          docker run -d -p 3000:3000 --name solar-system-test siddharth67/solar-system:${{ github.sha }}
+          sleep 5
+          curl http://localhost:3000 || true
+          docker stop solar-system-test
+
+          trivy image siddharth67/solar-system:${{ github.sha }} \
+            --severity LOW,MEDIUM,HIGH \
+            --exit-code 0 \
+            --quiet \
+            --format json -o trivy-image-MEDIUM-results.json
+
+          trivy image siddharth67/solar-system:${{ github.sha }} \
+            --severity CRITICAL \
+            --exit-code 0 \
+            --quiet \
+            --format json -o trivy-image-CRITICAL-results.json
+
+      - name: Upload Trivy Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-reports
+          path: |
+            trivy-image-CRITICAL-results.json
+            trivy-image-MEDIUM-results.json
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Push Docker image
+        run: docker push siddharth67/solar-system:${{ github.sha }}
+
+
+
+
+
+
+
+
+
+
+
+
+
+#      - name: Build and push
+#        uses: docker/build-push-action@v6
+#        with:
+#          push: true
+#          tags: user/app:latest
+#          secrets: |
+#            GIT_AUTH_TOKEN=${{ secrets.MYTOKEN }}
