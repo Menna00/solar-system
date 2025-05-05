@@ -10,7 +10,7 @@ on:
 
 env:
   MONGO_URI: "mongodb+srv://supercluster.d83jj.mongodb.net/superData"
-  MONGO_USERNAME:  ${{ secrets.MONGO_USERNAME }}
+  MONGO_USERNAME: ${{ secrets.MONGO_USERNAME }}
   MONGO_PASSWORD: ${{ secrets.MONGO_PASSWORD }}
 
 jobs:
@@ -33,7 +33,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.nodejs-version }}
-
   
   
   unit-test:
@@ -59,8 +58,7 @@ jobs:
           name: test-results
           path: test-results.xml
 
-  
-  
+    
   code-covering:
     runs-on: ubuntu-latest
     steps:
@@ -86,7 +84,6 @@ jobs:
           path: coverage
 
   
-  
   docker:
     needs: [unit-test, code-covering]
 
@@ -109,21 +106,22 @@ jobs:
         with:
           push: false
           tags: ${{ secrets.DOCKER_USERNAME }}/solar-system:${{ github.sha }}
-#          secrets: |
-#            GIT_AUTH_TOKEN=${{ secrets.MYTOKEN }}
-
 
       - name: docker image
         run: |
-        docker run --name solar-system-test -d \
-        -p 3000:3000 \
-        -e MONGO_URI=$MONGO_URI \
-        -e MONGO_USERNAME=$MONGO_USERNAME \
-        -e MONGO_PASSWORD=$MONGO_PASSWORD \
-         ${{ secrets.DOCKER_USERNAME }}/solar-system:${{ github.sha }}
+         docker run --name solar-system-test -d \
+         -p 3000:3000 \
+         -e MONGO_URI=$MONGO_URI \
+         -e MONGO_USERNAME=$MONGO_USERNAME \
+         -e MONGO_PASSWORD=$MONGO_PASSWORD \
+          ${{ secrets.DOCKER_USERNAME }}/solar-system:${{ github.sha }}
+
+          echo "Waiting for container to initialize..."
+          sleep 5
           
           export IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' solar-system-test)
           echo $IP
+          
           echo "testing image"
           wget -q -O - 127.0.0.1:3000/live | grep live
 
